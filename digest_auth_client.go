@@ -2,20 +2,22 @@ package digest_auth_client
 
 import (
 	"bytes"
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"time"
 )
 
 type DigestRequest struct {
-	Body     string
-	Method   string
-	Password string
-	Uri      string
-	Username string
-	Auth     *authorization
-	Wa       *wwwAuthenticate
-	ContentType	string
+	Body          string
+	Method        string
+	Password      string
+	Uri           string
+	Username      string
+	Auth          *authorization
+	Wa            *wwwAuthenticate
+	ContentType   string
+	SkipTLSVerify bool
 }
 
 func NewRequest(username string, password string, method string, uri string, body string) DigestRequest {
@@ -36,6 +38,21 @@ func (dr *DigestRequest) UpdateRequest(username string,
 	return dr
 }
 
+func (dr *DigestRequest) generateClient(timeout time.Duration) *http.Client {
+	if dr.SkipTLSVerify {
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+
+		return &http.Client{
+			Timeout:   timeout,
+			Transport: tr,
+		}
+	}
+
+	return &http.Client{Timeout: timeout}
+}
+
 func (dr *DigestRequest) Execute() (resp *http.Response, err error) {
 
 	if dr.Auth == nil {
@@ -48,9 +65,7 @@ func (dr *DigestRequest) Execute() (resp *http.Response, err error) {
 			req.Header.Set("Content-Type", dr.ContentType)
 		}
 
-		client := &http.Client{
-			Timeout: 30 * time.Second,
-		}
+		client := dr.generateClient(30 * time.Second)
 		resp, err = client.Do(req)
 
 		if resp.StatusCode == 401 {
@@ -121,9 +136,7 @@ func (dr *DigestRequest) executeRequest(authString string) (*http.Response, erro
 		req.Header.Set("Content-Type", dr.ContentType)
 	}
 
-	client := &http.Client{
-		Timeout: 30 * time.Second,
-	}
+	client := dr.generateClient(30 * time.Second)
 
 	return client.Do(req)
 }
