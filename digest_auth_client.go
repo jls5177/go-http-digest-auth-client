@@ -15,6 +15,7 @@ type DigestRequest struct {
 	Username string
 	Auth     *authorization
 	Wa       *wwwAuthenticate
+	ContentType	string
 }
 
 func NewRequest(username string, password string, method string, uri string, body string) DigestRequest {
@@ -41,6 +42,10 @@ func (dr *DigestRequest) Execute() (resp *http.Response, err error) {
 		var req *http.Request
 		if req, err = http.NewRequest(dr.Method, dr.Uri, bytes.NewReader([]byte(dr.Body))); err != nil {
 			return nil, err
+		}
+
+		if dr.ContentType != "" {
+			req.Header.Set("Content-Type", dr.ContentType)
 		}
 
 		client := &http.Client{
@@ -111,6 +116,10 @@ func (dr *DigestRequest) executeRequest(authString string) (*http.Response, erro
 
 	// fmt.Printf("AUTHSTRING: %s\n\n", authString)
 	req.Header.Add("Authorization", authString)
+
+	if dr.ContentType != "" {
+		req.Header.Set("Content-Type", dr.ContentType)
+	}
 
 	client := &http.Client{
 		Timeout: 30 * time.Second,
